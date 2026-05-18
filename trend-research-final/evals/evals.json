@@ -1,0 +1,23 @@
+{
+  "skill_name": "trend-research",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "generate-daily-report",
+      "prompt": "帮我生成今日的热点话题调研报告，关注Windows系统更新、数据恢复和存储设备领域，要给EaseUS社媒账号做选题参考。",
+      "expected_output": "生成包含热点排行、竞品分析、选题建议的结构化Markdown报告，保存到指定路径"
+    },
+    {
+      "id": 2,
+      "eval_name": "track-competitors",
+      "prompt": "查看竞争对手最新动态，重点关注Britec09、Recoverit和Tenorshare的YouTube频道最近发布了什么内容。",
+      "expected_output": "输出竞争对手的最新视频列表、观看数据、内容策略观察"
+    },
+    {
+      "id": 3,
+      "eval_name": "setup-daily-push",
+      "prompt": "设置每天自动推送热点报告到我的邮箱。",
+      "expected_output": "配置CronCreate定时任务，设置每天早上运行搜索和报告生成"
+    }
+  ]
+}
