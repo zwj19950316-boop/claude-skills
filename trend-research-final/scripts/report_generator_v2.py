@@ -12,6 +12,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from config_manager import load_config, ensure_dirs, REPORTS_DIR, CONFIG_DIR
 from topic_analyzer import format_topic_summary, filter_relevant_videos
+from enhanced_analytics import (
+    generate_enhanced_analysis,
+    format_full_analysis,
+)
 
 
 def extract_subscriber_number(subs_str):
@@ -202,6 +206,10 @@ def generate_report(data_path, config, output_path=None):
         # 生成话题简要说明
         topic_summary = format_topic_summary(topic_name, topic_keywords, videos)
 
+        # 生成增强分析（搜索量曲线 + 周期 + 竞争度 + 选题）
+        enhanced = generate_enhanced_analysis(topic_name, topic_keywords)
+        enhanced_md = format_full_analysis(enhanced)
+
         report += f"""### TOP {i}: {topic_name}
 
 | 维度 | 数据 |
@@ -214,6 +222,8 @@ def generate_report(data_path, config, output_path=None):
 | **结合说明** | {relevance_desc} |
 
 {topic_summary}
+
+{enhanced_md}
 
 **提及该话题的KOL**:
 

@@ -1,5 +1,5 @@
 ---
-name: trend-research
+name: trend-research-final
 description: >
   热点话题调研与社交媒体内容选题助手，专精于Windows系统、数据恢复、存储设备领域。
   当用户需要调研热点话题、生成趋势报告、追踪竞争对手内容、获取内容选题建议、
@@ -26,6 +26,10 @@ description: >
 - 跨平台热点搜索（YouTube / Reddit / Google Trends）
 - 竞争对手内容追踪与分析
 - 热度评估与选题建议（结合EaseUS产品卖点）
+- **搜索量曲线**：近7天 Google Trends 搜索热度趋势（pytrends）
+- **热点周期预测**：基于话题类型推断热度持续时间（如KB更新蓝屏通常7天修复）
+- **YouTube竞争度分析**：近7天相关长视频数量统计与竞争评级
+- **选题推荐**：高播放视频标题+主旨、高排名文章标题+主旨各列举3个
 - Google Trends 热度佐证（WebSearch 补充真实趋势数据）
 - 邮件报告推送
 - 定时任务设置（每日 / 每周一）
@@ -282,13 +286,40 @@ opencli twitter search "from:Windows" --filter top --limit 15 -f yaml
 - **P1（本周跟进）**：热度6-7分，或有一定产品关联
 - **P2（储备观察）**：热度4-5分，长期趋势
 
-#### Step 5: 生成报告（含话题深度分析 + 数据清洗）
+#### Step 5: 生成报告（含话题深度分析 + 数据清洗 + 增强分析）
 
 报告输出格式：Markdown
 
 报告保存路径：`~/.config/trend-reports/YYYY-MM-DD_report.md`
 
-**新增功能：**
+**新增功能（增强分析）：**
+每个热门话题自动包含以下四个维度的深度分析：
+
+**A. 搜索量曲线（近7天）**
+- 通过 `pytrends` 获取 Google Trends 搜索热度数据
+- 输出：日期-分数序列、趋势方向（上升/下降/平稳/波动）、峰值日期
+- 以 ASCII 柱状图形式展示在报告中
+
+**B. 热点周期预测**
+- 基于话题类型推断典型热度持续时间
+- Windows更新问题：~7天（微软通常3-7天发布补丁）
+- 蓝屏/崩溃：~14天（驱动级问题1-2周稳定）
+- 存储空间/C盘满：~30天（持续性痛点，长期内容布局）
+- 数据恢复：~14天（脉冲式热点，误删事件后1-2周爆发）
+- SSD/硬件升级：~45天（季节性话题，单轮1-2个月）
+- 附带行动建议：紧急/短期/中长期
+
+**C. YouTube竞争度分析（近7天）**
+- 搜索相关关键词，统计近7天上线视频
+- 区分长视频（≥5分钟）与短视频
+- 竞争评级：🔴 激烈（≥20长视频）/ 🟡 中等（10-19）/ 🟢 较低（<10）
+- 附带差异化建议
+
+**D. 选题推荐**
+- **YouTube高播放视频**：列举3个高播放视频标题 + 内容主旨（解决方案/对比评测/新闻解读/避坑提醒/技巧分享）
+- **高排名文章**：列举3个高排名文章标题 + 内容主旨 + 链接
+
+**原有功能：**
 - **数据相关性清洗**：每个话题自动过滤与主题无关的视频（相关性阈值0.25）
 - **话题深度分析**：每个话题包含：
   - 事件背景（从视频标题推断时间线、关键版本、问题类型）
@@ -349,6 +380,58 @@ opencli twitter search "from:Windows" --filter top --limit 15 -f yaml
 - r/xxx 社区讨论热点...
 - 用户情绪倾向...
 - 高赞建议汇总...
+
+#### 搜索量曲线（近7天）
+```
+**Windows 11 update** — 趋势: 上升 | 均值: 52.3 | 峰值: 78 (2026-05-23)
+近4天: ████ █████ ████████ ██████
+```
+
+#### 热点周期预测
+- **预估热度持续**: 约 7 天
+- **模式判断**: 微软通常会在问题曝光后 3-7 天内发布补丁修复，紧急情况下 24-48 小时推出热修复。
+- **行动建议**: 🔴 紧急窗口期，建议 48 小时内发布内容抢占流量
+
+#### YouTube 竞争度分析（近7天）
+| 指标 | 数值 |
+|------|------|
+| 相关视频总数 | 35 |
+| 长视频（≥5min） | 22 |
+| 短视频（<5min） | 13 |
+| 平均时长 | 8.5 分钟 |
+| 竞争评级 | 🔴 竞争激烈 |
+
+**建议**: 长视频供给饱和，建议差异化角度或 Shorts 形式切入
+
+#### 选题参考
+**YouTube 高播放视频参考**
+1. **Windows 11 24H2 Update Causing Major Problems - How to Fix** (1.2M views)
+   - 内容主旨: 解决方案/教程
+   - 时长: 12:34
+
+2. **New Windows 11 Build 26120 Issues and Workarounds** (890K views)
+   - 内容主旨: 新闻解读
+   - 时长: 8:15
+
+3. **Fix Windows Update Error 0x800f081f in 2 Minutes** (650K views)
+   - 内容主旨: 解决方案/教程
+   - 时长: 2:05
+
+**高排名文章参考**
+1. **Windows 11 24H2 Update Problems and Fixes**
+   - 链接: https://...
+   - 内容主旨: 解决方案/教程
+   - 摘要: Microsoft has released a new update for Windows 11 that causes...
+
+2. **How to Fix Windows 11 Update Stuck at 99%**
+   - 链接: https://...
+   - 内容主旨: 解决方案/教程
+   - 摘要: If your Windows 11 update is stuck, try these steps...
+
+3. **Windows 11 KB5034441 Update Fails to Install**
+   - 链接: https://...
+   - 内容主旨: 新闻解读
+   - 摘要: The latest KB update is causing installation issues for many users...
 
 ### TOP 2: ...
 
@@ -509,6 +592,9 @@ python scripts/report_generator_v2.py --email        # 生成后发送邮件
 
 # 邮件发送
 python scripts/email_sender.py --report ./report.md
+
+# 增强分析（独立测试）
+python scripts/enhanced_analytics.py "Windows 11 update" update windows
 ```
 
 ## 脚本说明
@@ -517,8 +603,9 @@ python scripts/email_sender.py --report ./report.md
 - **`scripts/search_executor_v3.py`** — YouTube KOL抓取 + 动态话题聚类 + Reddit搜索
 - **`scripts/topic_extractor.py`** — 动态话题提取（TF-IDF + KMeans），从视频标题自动聚类
 - **`scripts/trends_fetcher.py`** — Google Trends 数据获取（pytrends），需配合代理或本地环境使用
-- **`scripts/report_generator_v2.py`** — 读取搜索数据，生成带KOL提及/结合度/差异化建议的Markdown报告
+- **`scripts/report_generator_v2.py`** — 读取搜索数据，生成带KOL提及/结合度/差异化建议的Markdown报告（已集成增强分析）
 - **`scripts/topic_analyzer.py`** — 话题深度分析（事件背景、YouTube/新闻/Reddit多维度讨论、数据相关性清洗）
+- **`scripts/enhanced_analytics.py`** — **增强分析模块**：搜索量曲线 + 热点周期预测 + YouTube竞争度 + 选题推荐
 - **`scripts/export_word.py`** — 将Markdown报告导出为Word文档
 - **`scripts/email_sender.py`** — SMTP邮件发送，支持HTML格式和附件
 - **`references/report_template.md`** — 报告模板和示例
