@@ -374,8 +374,29 @@ def fetch_youtube_competition(
         f"YouTube竞争度: {query}",
     )
 
+    # opencli 失败时 fallback 到 firecrawl
     if not data or not isinstance(data, list):
-        return {}
+        logger.info(f"[备选] 使用 firecrawl 分析 YouTube 竞争度: {query}")
+        fc_videos = fetch_youtube_via_firecrawl(query, limit)
+        total = len(fc_videos)
+        # firecrawl 无法获取时长，按总数估算竞争度
+        level = "[激烈] 竞争激烈" if total >= 20 else "[中等] 竞争中等" if total >= 10 else "[较低] 竞争较低"
+        advice = (
+            "长视频供给饱和，建议差异化角度或 Shorts 形式切入" if total >= 20 else
+            "有一定供给但仍有空间，建议优化标题和缩略图" if total >= 10 else
+            "长视频供给不足，是抢占搜索排名的窗口期"
+        )
+        return {
+            "query": query,
+            "total_videos": total,
+            "long_videos": "N/A (firecrawl)",
+            "short_videos": "N/A (firecrawl)",
+            "avg_duration_min": "N/A",
+            "top_channels": [],
+            "high_view_videos": [{"title": v["title"], "views": "N/A", "channel": "N/A"} for v in fc_videos[:10]],
+            "source": "firecrawl",
+        }
+
 
     total = 0
     long_count = 0
@@ -452,17 +473,30 @@ def format_competition_analysis(comp_data: Dict[str, Any]) -> str:
     long = comp_data.get("long_videos", 0)
     short = comp_data.get("short_videos", 0)
     avg_dur = comp_data.get("avg_duration_min", 0)
+    source = comp_data.get("source", "opencli")
 
     # 竞争度评级
-    if long >= 20:
-        level = "[激烈] 竞争激烈"
-        advice = "长视频供给饱和，建议差异化角度或 Shorts 形式切入"
-    elif long >= 10:
-        level = "[中等] 竞争中等"
-        advice = "有一定供给但仍有空间，建议优化标题和缩略图"
+    if source == "firecrawl":
+        # firecrawl 无法获取时长，按总数估算
+        if total >= 20:
+            level = "[激烈] 竞争激烈"
+            advice = "搜索结果较多，建议差异化角度或 Shorts 形式切入"
+        elif total >= 10:
+            level = "[中等] 竞争中等"
+            advice = "有一定供给但仍有空间，建议优化标题和缩略图"
+        else:
+            level = "[较低] 竞争较低"
+            advice = "搜索结果较少，是抢占搜索排名的窗口期"
     else:
-        level = "[较低] 竞争较低"
-        advice = "长视频供给不足，是抢占搜索排名的窗口期"
+        if isinstance(long, int) and long >= 20:
+            level = "[激烈] 竞争激烈"
+            advice = "长视频供给饱和，建议差异化角度或 Shorts 形式切入"
+        elif isinstance(long, int) and long >= 10:
+            level = "[中等] 竞争中等"
+            advice = "有一定供给但仍有空间，建议优化标题和缩略图"
+        else:
+            level = "[较低] 竞争较低"
+            advice = "长视频供给不足，是抢占搜索排名的窗口期"
 
     lines = [
         f"#### YouTube 竞争度分析（近7天）\n",
@@ -481,47 +515,97 @@ def format_competition_analysis(comp_data: Dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Firecrawl 备选 YouTube 搜索（opencli 不可用时）
+# ---------------------------------------------------------------------------
+
+def fetch_youtube_via_firecrawl(query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """使用 firecrawl 搜索 YouTube 视频（opencli 备选）。"""
+    try:
+        firecrawl_path = get_firecrawl_path()
+        search_query = f"{query} site:youtube.com"
+        result = subprocess.run(
+            [firecrawl_path, "search", search_query, "--limit", str(limit), "--json"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if result.returncode != 0:
+            return []
+
+        data = json.loads(result.stdout)
+        web_results = data.get("data", {}).get("web", []) if isinstance(data.get("data"), dict) else data.get("data", [])
+
+        videos = []
+        for item in web_results:
+            url = item.get("url", "")
+            if "youtube.com/watch" not in url:
+                continue
+            videos.append({
+                "title": item.get("title", "N/A"),
+                "url": url,
+                "description": item.get("description", "")[:100],
+            })
+        return videos
+    except Exception as e:
+        logger.warning(f"firecrawl YouTube search failed: {e}")
+        return []
+
+
+# ---------------------------------------------------------------------------
 # 4. 选题推荐 — 高播放视频 + 高排名文章
 # ---------------------------------------------------------------------------
 
 def fetch_top_youtube_content(query: str, limit: int = 20) -> List[Dict[str, Any]]:
     """获取 YouTube 上某关键词的高播放视频。"""
+    # 先尝试 opencli
     data = run_opencli(
         ["youtube", "search", query, "--limit", str(limit), "-f", "yaml"],
         f"选题-YouTube: {query}",
     )
 
-    if not data or not isinstance(data, list):
-        return []
-
     videos = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        field = item.get("field", "")
-        value = item.get("value", "")
+    if data and isinstance(data, list):
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            field = item.get("field", "")
+            value = item.get("value", "")
 
-        if isinstance(value, str) and "|" in value:
-            parts = value.split("|")
-            if len(parts) >= 3:
-                title = str(field).strip()
-                duration = parts[0].strip()
-                views_str = parts[1].strip()
+            if isinstance(value, str) and "|" in value:
+                parts = value.split("|")
+                if len(parts) >= 3:
+                    title = str(field).strip()
+                    duration = parts[0].strip()
+                    views_str = parts[1].strip()
 
-                views_num = 0
-                match = re.match(r"([\d.]+)\s*([KMB]?)", str(views_str), re.IGNORECASE)
-                if match:
-                    num = float(match.group(1))
-                    suffix = match.group(2).upper()
-                    multipliers = {"K": 1000, "M": 1000000, "B": 1000000000}
-                    views_num = int(num * multipliers.get(suffix, 1))
+                    views_num = 0
+                    match = re.match(r"([\d.]+)\s*([KMB]?)", str(views_str), re.IGNORECASE)
+                    if match:
+                        num = float(match.group(1))
+                        suffix = match.group(2).upper()
+                        multipliers = {"K": 1000, "M": 1000000, "B": 1000000000}
+                        views_num = int(num * multipliers.get(suffix, 1))
 
-                videos.append({
-                    "title": title,
-                    "duration": duration,
-                    "views": views_str,
-                    "views_num": views_num,
-                })
+                    videos.append({
+                        "title": title,
+                        "duration": duration,
+                        "views": views_str,
+                        "views_num": views_num,
+                    })
+
+    # opencli 失败时 fallback 到 firecrawl
+    if not videos:
+        logger.info(f"[备选] 使用 firecrawl 搜索 YouTube: {query}")
+        fc_videos = fetch_youtube_via_firecrawl(query, limit)
+        for v in fc_videos:
+            videos.append({
+                "title": v["title"],
+                "duration": "N/A",
+                "views": "N/A",
+                "views_num": 0,
+            })
 
     return sorted(videos, key=lambda x: x["views_num"], reverse=True)
 
